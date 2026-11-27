@@ -4,7 +4,7 @@ For camp leads and volunteers. Read the safety checklist before the first sessio
 
 ## Before camp (once per robot)
 
-1. Flash **MicroPython for the Pico 2** (RP2350) onto every Pico. Hold BOOTSEL, plug in USB, then drag the `.uf2` file onto the `RP2350` drive.
+1. Put **MicroPython** on every Pico: **More → Install MicroPython**. For a brand-new Pico, hold its BOOTSEL button while you plug in the USB cable; the desktop app spots it and installs by itself. A Pico that already runs MicroPython is restarted into install mode for you.
 2. Open Eaglets Code, connect the robot, and press Run on the **Flashing LEDs** starter. That installs the robot library.
 3. Run **Move Forward and Stop** with the wheels in the air. If a wheel spins backwards, open ⚙ Instructor settings and tick that wheel's "spins backwards" box.
 4. Optional, for Day 2's "preinstalled demo": switch Beginner mode off, load Flashing LEDs, and use **Save to robot**. The robot now runs it at power-on. It only uses LEDs, so that's safe. Never save a motor program as the power-on program for camp robots.
@@ -48,13 +48,29 @@ Go through this at the start of any session that uses motors.
 
 Beginner mode (the default) hides raw wheel control, accelerometer and rotation numbers, extra maths, line and sound sensors, and technical error details. Switch it off for older or faster students, and for yourself when troubleshooting. Advanced mode also shows *Save to robot*, *Remove saved program* and *Reinstall robot library*.
 
+## Teacher debug mode
+
+When a robot is misbehaving and the student-friendly message isn't enough, open **More → Instructor settings** and tick **Teacher debug mode**. It turns on straight away and shows:
+
+- the board, MicroPython version and USB port the app is talking to
+- full error messages (the Python traceback) and the console after every run
+- *Save to robot*, *Remove saved program* and *Reinstall robot library*, without switching Beginner mode off
+- a log of everything the app did: connects, reconnects, library installs, runs, stops and failures
+
+The log records all the time, so you can switch debug mode on *after* something went wrong and still see what led up to it. **Copy report** puts the log, the robot's details and the settings on the clipboard, ready to paste into a message.
+
+Debug mode is per laptop and stays on until you switch it off. While it's on, a dashed **Debug on** badge sits in the top bar. Click it to switch debug mode off before handing the laptop back. Adding `?debug=1` to the address also switches it on.
+
 ## When something goes wrong
 
 | Student sees | Do this |
 |---|---|
 | "Your robot is not connected." | Click Connect Robot. Check the cable (some only charge). |
-| "Being used by another program" | Close Thonny or the other Eaglets Code tab. |
-| "MicroPython isn't responding" | Unplug and replug USB, then connect again. If that fails, reflash MicroPython. |
+| "Your robot was unplugged." | Plug it back in. A robot this laptop has used before reconnects by itself within a couple of seconds. |
+| "Being used by another program" | Close the other Eaglets Code window (or Thonny, if it's still installed). |
+| "MicroPython isn't responding" | Unplug and replug USB, then connect again. If that fails, press **Install MicroPython** on the message. |
+| "Line 7: …" in Code mode | Line 7 is highlighted in the editor. That's where the program stopped. |
+| Motors still going after a Shell command | Press **Stop**: it switches motors and lights off even when nothing is running. Untimed moves also stop by themselves after 20 seconds. |
 | "This block needs a value." | The highlighted block has an empty slot. Drag a number or sensor in. |
 | "Another program is already running." | Press Stop first. |
 | "The distance sensor isn't answering." | Check J1's cable and orientation. |
@@ -66,5 +82,6 @@ The Simulator tab works without any hardware. It's a good place for students wai
 
 ## Saving work
 
-- **💾 Save** downloads a `.eaglets` file. **📂 Open** loads one.
+- **Save** downloads a `.eaglets` file. **Open** loads a `.eaglets` project or a `.py` file.
+- In Code mode, **Save** (Ctrl/Cmd+S) writes back to the file the code came from; **Save to computer…** and **Save to robot…** pick a new place. **Files** shows everything stored on the robot.
 - The browser also autosaves the current project and restores it on reload. That's a convenience only. Have students Save before the end of the day.

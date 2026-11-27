@@ -26,7 +26,15 @@ export class WebSerialTransport implements Transport {
   async open() {
     this.closing = false;
     this.disconnected = false;
-    await this.port.open({ baudRate: 115200 });
+    try {
+      await this.port.open({ baudRate: 115200 });
+    } catch (e) {
+      // A port that was unplugged mid-use can be handed back still marked open.
+      // We're its only user, so close it and try once more.
+      if ((e as Error)?.name !== 'InvalidStateError') throw e;
+      await this.port.close().catch(() => {});
+      await this.port.open({ baudRate: 115200 });
+    }
     try {
       await this.port.setSignals({ dataTerminalReady: true });
     } catch {

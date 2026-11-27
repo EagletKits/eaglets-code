@@ -32,7 +32,7 @@ export const LED_PALETTE: Array<[string, string]> = [
   ['#000000', 'off'],
 ];
 
-const DIR_MOVE = [['forward ⬆', 'forward'], ['backward ⬇', 'backward']];
+const DIR_MOVE = [['forward', 'forward'], ['backward', 'backward']];
 const DIR_TURN = [['left ↺', 'left'], ['right ↻', 'right']];
 
 const percent = (name: string) => ({ type: 'input_value', name, check: 'Number' });
@@ -55,7 +55,7 @@ export const BLOCK_DEFINITIONS = [
   // ---------------------------------------------------------------- start
   {
     type: 'eaglets_when_start',
-    message0: '🦅 when program starts',
+    message0: 'when program starts',
     nextStatement: null,
     colour: COLORS.start,
     tooltip: 'Your program begins here. Snap blocks underneath.',
@@ -121,7 +121,7 @@ export const BLOCK_DEFINITIONS = [
   },
   {
     type: 'eaglets_stop',
-    message0: '🛑 stop motors',
+    message0: 'stop motors',
     ...stmt('movement', 'Stop both wheels.'),
   },
   {
@@ -133,7 +133,7 @@ export const BLOCK_DEFINITIONS = [
   },
   {
     type: 'eaglets_speed_from_dial',
-    message0: 'set speed from dial 🎛',
+    message0: 'set speed from dial',
     ...stmt('movement', 'Use the dial to choose the speed.'),
   },
   {
@@ -169,7 +169,7 @@ export const BLOCK_DEFINITIONS = [
   },
   {
     type: 'eaglets_random_color',
-    message0: 'random color 🎲',
+    message0: 'random color',
     ...reporter('lights', 'Colour', 'A surprise colour.'),
   },
   {
@@ -200,7 +200,7 @@ export const BLOCK_DEFINITIONS = [
   },
   {
     type: 'eaglets_brightness_dial',
-    message0: 'set brightness from dial 🎛',
+    message0: 'set brightness from dial',
     ...stmt('lights', 'Turn the dial to make the LEDs brighter or dimmer.'),
   },
   {
@@ -212,7 +212,7 @@ export const BLOCK_DEFINITIONS = [
   },
   {
     type: 'eaglets_rainbow',
-    message0: '🌈 rainbow for %1 seconds',
+    message0: 'rainbow for %1 seconds',
     args0: [num('SECONDS')],
     inputsInline: true,
     ...stmt('lights', 'Show a moving rainbow.'),
@@ -221,12 +221,12 @@ export const BLOCK_DEFINITIONS = [
   // ---------------------------------------------------------------- sensors
   {
     type: 'eaglets_dial',
-    message0: 'dial value 🎛',
+    message0: 'dial value',
     ...reporter('sensors', 'Number', 'Where the dial is turned: 0 to 100.'),
   },
   {
     type: 'eaglets_distance',
-    message0: 'distance (cm) 📏',
+    message0: 'distance (cm)',
     ...reporter('sensors', 'Number', 'How far away the closest thing in front is, in centimeters. 400 means nothing is in range.'),
   },
   {
@@ -262,7 +262,7 @@ export const BLOCK_DEFINITIONS = [
   },
   {
     type: 'eaglets_shaken',
-    message0: 'robot is shaken? 🫨',
+    message0: 'robot is shaken?',
     ...reporter('sensors', 'Boolean', 'True once each time you shake the robot.'),
   },
   {
@@ -277,7 +277,7 @@ export const BLOCK_DEFINITIONS = [
       {
         type: 'field_dropdown',
         name: 'AXIS',
-        options: [['left ↔ right', 'left-right'], ['forward ↕ back', 'forward-back']],
+        options: [['left / right', 'left-right'], ['forward / back', 'forward-back']],
       },
     ],
     ...reporter('sensors', 'Number', 'How far the robot is tipped, in degrees. Right side down or nose down is positive.'),
@@ -296,12 +296,12 @@ export const BLOCK_DEFINITIONS = [
   },
   {
     type: 'eaglets_swiped',
-    message0: 'swiped %1 ? 👋',
+    message0: 'swiped %1 ?',
     args0: [
       {
         type: 'field_dropdown',
         name: 'DIR',
-        options: [['left ⬅', 'left'], ['right ➡', 'right'], ['up ⬆', 'up'], ['down ⬇', 'down']],
+        options: [['left', 'left'], ['right', 'right'], ['up', 'up'], ['down', 'down']],
       },
     ],
     ...reporter('sensors', 'Boolean', 'True once when you swipe your hand over the gesture sensor this way.'),
@@ -325,12 +325,12 @@ export const BLOCK_DEFINITIONS = [
   },
   {
     type: 'eaglets_object_near',
-    message0: 'object nearby? ✋',
+    message0: 'object nearby?',
     ...reporter('sensors', 'Boolean', 'True when something is very close to the gesture sensor.'),
   },
   {
     type: 'eaglets_light',
-    message0: 'light level ☀',
+    message0: 'light level',
     ...reporter('sensors', 'Number', 'How bright it is around the sensor: 0 to 100.'),
   },
   {
@@ -341,7 +341,7 @@ export const BLOCK_DEFINITIONS = [
   },
   {
     type: 'eaglets_heard',
-    message0: 'heard a loud sound? 👏',
+    message0: 'heard a loud sound?',
     ...reporter('sensors', 'Boolean', 'True if the sound sensor heard a clap since the last check.'),
   },
 
@@ -369,19 +369,19 @@ export const BLOCK_DEFINITIONS = [
   },
   {
     type: 'eaglets_beep',
-    message0: 'beep 🔔',
+    message0: 'beep',
     ...stmt('sound', 'A short beep.'),
   },
   {
     type: 'eaglets_alarm',
-    message0: 'sound alarm for %1 seconds 🚨',
+    message0: 'sound alarm for %1 seconds',
     args0: [num('SECONDS')],
     inputsInline: true,
     ...stmt('sound', 'A two-tone alarm.'),
   },
   {
     type: 'eaglets_sound_off',
-    message0: 'stop sound 🔇',
+    message0: 'stop sound',
     ...stmt('sound', 'Silence the buzzer.'),
   },
 

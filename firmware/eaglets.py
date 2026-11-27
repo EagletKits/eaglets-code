@@ -303,6 +303,16 @@ def start():
     _started = True
 
 
+def arm_safety():
+    """Run the safety checks (motor auto-stop, motor fault) without touching
+    the outputs. Eaglets Code calls this before every Shell command, where
+    nobody calls start(), so a typed robot.forward() still stops by itself."""
+    global _timer, _started
+    if _timer is None:
+        _timer = Timer(period=_SAFETY_PERIOD_MS, mode=Timer.PERIODIC, callback=_safety_tick)
+    _started = True
+
+
 def shutdown():
     """Stop motors, lights and sound. Safe to call more than once."""
     global _timer, _started

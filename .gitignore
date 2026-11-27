@@ -26,3 +26,7 @@ dist-ssr
 .venv
 e2e/screens
 __pycache__
+release
+
+# copied from node_modules/blockly/media by vite.config.ts
+public/blockly-media

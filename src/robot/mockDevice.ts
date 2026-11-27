@@ -161,6 +161,31 @@ export class MockMicroPythonDevice implements Transport {
     this.emit(stdout + '\x04' + stderr + '\x04>');
   }
 
+  shellEntries: string[] = [];
+
+  /** The mock can't run Python. It answers sums and print("text") so the Shell can be tested. */
+  private runShell(src: string) {
+    this.shellEntries.push(src);
+    const s = src.trim();
+    if (/^while True:/.test(s)) {
+      // Runs until Stop, like a real loop would.
+      this.mode = 'running';
+      const done = (interrupted: boolean) => {
+        if (this.finishRun !== done) return;
+        this.finishRun = null;
+        this.finish('', interrupted ? 'Traceback (most recent call last):\r\n  File "<stdin>", line 13, in <module>\r\n  File "<shell>", line 2, in <module>\r\nKeyboardInterrupt: \r\n' : '');
+      };
+      this.finishRun = done;
+      return;
+    }
+    if (/^[\d\s+\-*/().]+$/.test(s)) return this.finish(`${Function(`return (${s})`)()}\r\n`, '');
+    const p = s.match(/^print\((["'])(.*)\1\)$/);
+    if (p) return this.finish(`${p[2]}\r\n`, '');
+    const name = s.match(/^([A-Za-z_]\w*)$/);
+    if (name) return this.finish('', `Traceback (most recent call last):\r\n  File "<stdin>", line 13, in <module>\r\n  File "<shell>", line 1, in <module>\r\nNameError: name '${name[1]}' isn't defined\r\n`);
+    return this.finish('', '');
+  }
+
   private execute(code: string) {
     const cmd = code.match(/^# eaglets-cmd: ([\w-]+) ?(\S*)/);
     if (cmd) {
@@ -182,6 +207,31 @@ export class MockMicroPythonDevice implements Transport {
         const had = this.files.delete(arg);
         return this.finish(had ? 'removed\r\n' : 'missing\r\n', '');
       }
+      if (name === 'list-files') {
+        const lines = [...this.files.entries()].map(([p, c]) => `F|${p}|${enc.encode(c).length}`);
+        return this.finish(lines.join('\r\n') + '\r\nS|1441792|1300000\r\n', '');
+      }
+      if (name === 'read-file') {
+        const c = this.files.get(arg);
+        if (c === undefined) return this.finish('', `Traceback (most recent call last):\r\n  File "<stdin>", line 3, in <module>\r\nOSError: [Errno 2] ENOENT\r\n`);
+        const data = enc.encode(c);
+        const lines: string[] = [];
+        for (let i = 0; i < data.length; i += 510) lines.push(btoa(String.fromCharCode(...data.subarray(i, i + 510))));
+        return this.finish(lines.map((l) => l + '\r\n').join(''), '');
+      }
+      if (name === 'rename-file') {
+        const to = code.match(/^# eaglets-cmd: rename-file \S+ (\S+)/)![1];
+        if (this.files.has(to)) return this.finish('exists\r\n', '');
+        this.files.set(to, this.files.get(arg) ?? '');
+        this.files.delete(arg);
+        return this.finish('renamed\r\n', '');
+      }
+      if (name === 'shell') return this.runShell(JSON.parse(code.match(/^_s = (.*)$/m)![1]) as string);
+      if (name === 'bootloader') {
+        // machine.bootloader() never answers: the Pico restarts as a USB drive.
+        setTimeout(() => this.unplug(), 30);
+        return;
+      }
       return this.finish('', '');
     }
     // A student program.
@@ -189,6 +239,9 @@ export class MockMicroPythonDevice implements Transport {
     this.mode = 'running';
     const forever = /while True:/.test(code);
     this.emit('Program running on practice robot\r\n');
+    // It can't run Python, but it echoes print(<number>) lines so the plotter can be tested.
+    const printed = [...code.matchAll(/^\s*print\((-?[\d.]+)\)\s*$/gm)].map((m) => m[1]);
+    if (printed.length) this.emit(printed.join('\r\n') + '\r\n');
     const done = (interrupted: boolean) => {
       if (this.finishRun !== done) return;
       this.finishRun = null;

@@ -2,37 +2,115 @@
   "name": "eaglets-code",
   "private": true,
   "version": "1.0.0",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "npm run notices && tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "vitest run",
     "test:firmware": "python3 -m unittest discover -s firmware/tests",
     "test:e2e": "node e2e/smoke.mjs",
     "test:all": "npm run test:firmware && npm test",
-    "setup:python": "sh scripts/setup-python.sh"
-  },
-  "dependencies": {
-    "@blockly/field-colour": "^13.5.0",
-    "@fontsource-variable/inter": "^5.3.0",
-    "@fontsource/space-grotesk": "^5.3.0",
-    "blockly": "^13.5.0",
-    "react": "^19.3.1",
-    "react-dom": "^19.3.1"
+    "setup:python": "sh scripts/setup-python.sh",
+    "desktop": "npm run build && env -u ELECTRON_RUN_AS_NODE electron .",
+    "desktop:dev": "env -u ELECTRON_RUN_AS_NODE ELECTRON_DEV_URL=http://localhost:5173 electron .",
+    "desktop:pack": "npm run build && electron-packager . \"Eaglets Code\" --platform=darwin --out=release --overwrite --app-bundle-id=org.eaglets.code --icon=desktop/icon --ignore=\"^/(node_modules|src|tests|e2e|firmware|docs|scripts|public|release|\\\\.venv|\\\\.git)(/|$)\" --ignore=\"^/(vite|vitest|tsconfig|index|package-lock|README)\" --ignore=\"^/\\\\.\"",
+    "dist:mac": "npm run build && env -u ELECTRON_RUN_AS_NODE electron-builder --mac",
+    "dist:win": "npm run build && env -u ELECTRON_RUN_AS_NODE electron-builder --win",
+    "dist": "npm run build && env -u ELECTRON_RUN_AS_NODE electron-builder --mac --win",
+    "notices": "node scripts/third-party-notices.mjs",
+    "fetch-firmware": "node scripts/fetch-micropython.mjs"
   },
   "devDependencies": {
+    "@blockly/field-colour": "^13.5.0",
+    "@codemirror/commands": "^6.11.1",
+    "@codemirror/lang-python": "^6.2.1",
+    "@codemirror/language": "^6.13.1",
+    "@codemirror/state": "^6.7.6",
+    "@codemirror/view": "^6.43.15",
+    "@electron/packager": "^20.3.0",
+    "@fontsource-variable/fredoka": "^5.3.0",
     "@types/node": "^24.19.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@types/w3c-web-serial": "^1.0.9",
     "@vitejs/plugin-react": "^6.1.2",
+    "blockly": "^13.5.0",
+    "codemirror": "^6.0.2",
+    "electron": "^45.4.1",
+    "electron-builder": "^26.18.0",
     "jsdom": "^30.1.3",
     "oxlint": "^1.90.0",
     "playwright-core": "^1.65.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "typescript": "~7.0.2",
     "vite": "^8.3.6",
     "vitest": "^5.1.1"
+  },
+  "description": "Block and Python programming for the Eaglets robot kit",
+  "main": "desktop/main.cjs",
+  "author": "Eaglets",
+  "build": {
+    "appId": "org.eaglets.code",
+    "productName": "Eaglets Code",
+    "directories": {
+      "output": "release/installers"
+    },
+    "files": [
+      "desktop/**",
+      "dist/**",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "LICENSE",
+        "to": "LICENSE.txt"
+      },
+      {
+        "from": "public/THIRD_PARTY_NOTICES.txt",
+        "to": "THIRD_PARTY_NOTICES.txt"
+      },
+      {
+        "from": "PRIVACY.md",
+        "to": "PRIVACY.md"
+      }
+    ],
+    "artifactName": "Eaglets-Code-${version}-${os}-${arch}.${ext}",
+    "mac": {
+      "category": "public.app-category.education",
+      "icon": "desktop/icon.icns",
+      "identity": "-",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "hardenedRuntime": false
+    },
+    "win": {
+      "icon": "desktop/icon.png",
+      "signAndEditExecutable": false,
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false
+    },
+    "copyright": "Copyright (c) 2026 Eaglets"
   }
 }

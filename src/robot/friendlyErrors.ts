@@ -20,11 +20,29 @@ const RULES: Array<[RegExp, string | ((m: RegExpMatchArray) => string)]> = [
   [/TypeError: (.*)$/m, 'A block got the wrong kind of value. Check numbers, colors and true/false blocks.'],
 ];
 
-export function translateTraceback(stderr: string): FriendlyError | null {
+/**
+ * The line in the student's program where it failed: the last "<stdin>" frame,
+ * because a program sent from the editor runs as <stdin>.
+ */
+export function errorLine(traceback: string): number | null {
+  const all = [...traceback.matchAll(/File "<stdin>", line (\d+)/g)];
+  return all.length ? Number(all[all.length - 1][1]) : null;
+}
+
+export function translateTraceback(stderr: string, opts: { handWritten?: boolean } = {}): FriendlyError | null {
   const details = stderr.trim();
   if (!details) return null;
   if (/KeyboardInterrupt/.test(details)) {
     return { message: 'Program stopped.', details, stoppedByUser: true };
+  }
+  // In hand-written code a SyntaxError is the writer's typo, not an Eaglets Code bug.
+  const syntax = details.match(/SyntaxError: ?(.*)$/m);
+  if (syntax && opts.handWritten) {
+    const why = syntax[1].trim();
+    return { message: `Python can't read this line${why ? ` (${why})` : ''}. Check for a missing bracket, quote or colon, or wrong indenting.`, details, stoppedByUser: false };
+  }
+  if (/IndentationError/.test(details) && opts.handWritten) {
+    return { message: 'The indenting (spaces at the start of the line) is wrong here.', details, stoppedByUser: false };
   }
   for (const [re, msg] of RULES) {
     const m = details.match(re);

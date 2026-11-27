@@ -2,20 +2,30 @@ import { RawRepl } from './rawRepl';
 import { DisconnectedError, type Transport } from './transport';
 import {
   BOARD_INFO_SCRIPT,
+  BOOTLOADER_SCRIPT,
+  LIST_FILES_SCRIPT,
   SAFE_STOP_SCRIPT,
   WATCHDOG_SCRIPT,
   checkFilesScript,
   fileHeader,
   hashText,
   parseCheckFiles,
+  parseFileList,
+  parseReadFile,
+  readFileScript,
   removeFileScript,
+  renameFileScript,
   robotLibraryFiles,
+  shellScript,
   writeFileScript,
+  type RobotStorage,
 } from './deviceFiles';
 import { connectionErrorMessage, translateTraceback, type FriendlyError } from './friendlyErrors';
 import type { HardwareConfig } from '../hardware/config';
 
-export type RobotState = 'disconnected' | 'connecting' | 'ready' | 'installing' | 'running' | 'stopping';
+export type RobotState = 'disconnected' | 'connecting' | 'ready' | 'installing' | 'working' | 'running' | 'stopping';
+/** What a 'running' robot is doing: a whole program, or one Shell entry. */
+export type Activity = 'program' | 'shell';
 
 export interface BoardInfo {
   implementation: string;
@@ -33,6 +43,12 @@ export interface RobotEvents {
 export interface RunResult {
   status: 'finished' | 'stopped' | 'error';
   error?: FriendlyError;
+}
+
+export interface ShellResult {
+  status: 'ok' | 'stopped' | 'error';
+  /** The traceback, trimmed to the student's own lines. */
+  error?: string;
 }
 
 export class RobotBusyError extends Error {
@@ -54,7 +70,10 @@ export const STOP_GIVE_UP_MS = 4000;
 
 export class RobotConnection {
   state: RobotState = 'disconnected';
+  activity: Activity | null = null;
   board: BoardInfo | null = null;
+  /** True while the Pico is restarting into firmware-install mode, so its disappearance isn't an "unplug". */
+  private leavingForBootloader = false;
   private transport: Transport | null = null;
   private repl: RawRepl | null = null;
   private syncedHash: string | null = null;
@@ -112,18 +131,30 @@ export class RobotConnection {
   }
 
   private handleUnplug() {
+    if (this.leavingForBootloader) {
+      this.leavingForBootloader = false;
+      const t = this.transport;
+      this.repl?.queue.fail(new DisconnectedError());
+      this.cleanup();
+      void t?.close().catch(() => {});
+      return;
+    }
     const wasRunning = this.state === 'running' || this.state === 'stopping';
+    const t = this.transport;
     this.repl?.queue.fail(new DisconnectedError());
     this.cleanup();
-    this.events.onNotice?.(
-      'error',
-      wasRunning
-        ? 'Your robot was unplugged while running. Its motors should stop within 3 seconds. If they don\'t, switch the robot\'s power OFF.'
-        : 'Your robot was disconnected.',
-    );
+    // Release the dead port so it can be opened again when the robot comes back.
+    void t?.close().catch(() => {});
+    // Unplugged mid-run is a safety message; unplugged while idle is routine.
+    if (wasRunning) {
+      this.events.onNotice?.('error', 'Your robot was unplugged while running. Its motors should stop within 3 seconds. If they don\'t, switch the robot\'s power OFF.');
+    } else {
+      this.events.onNotice?.('warning', 'Your robot was disconnected.');
+    }
   }
 
   private cleanup() {
+    this.activity = null;
     this.stopHeartbeat();
     this.clearStopTimers();
     if (this.transport) {
@@ -159,8 +190,103 @@ export class RobotConnection {
 
   private requireReady(): RawRepl {
     if (!this.repl || !this.connected) throw new NotConnectedError();
-    if (this.state === 'running' || this.state === 'stopping' || this.state === 'installing') throw new RobotBusyError();
+    if (this.state === 'running' || this.state === 'stopping' || this.state === 'installing' || this.state === 'working') throw new RobotBusyError();
     return this.repl;
+  }
+
+  /** Run a short helper job (file work) with the robot marked busy. */
+  private async working<T>(job: (repl: RawRepl) => Promise<T>): Promise<T> {
+    const repl = this.requireReady();
+    this.setState('working');
+    try {
+      return await job(repl);
+    } catch (e) {
+      if (e instanceof DisconnectedError || !this.transport) throw new NotConnectedError();
+      throw e;
+    } finally {
+      if (this.state === 'working') this.setState('ready');
+    }
+  }
+
+  /** Everything stored on the robot, with how much space is left. */
+  listFiles(): Promise<RobotStorage> {
+    return this.working(async (repl) => parseFileList(await repl.evalOk(LIST_FILES_SCRIPT, 10000)));
+  }
+
+  readFile(path: string): Promise<Uint8Array> {
+    return this.working(async (repl) => parseReadFile(await repl.evalOk(readFileScript(path), 30000)));
+  }
+
+  async writeFile(path: string, content: string | Uint8Array) {
+    await this.working(async (repl) => {
+      const res = await repl.evalOk(writeFileScript(path, content), 60000);
+      if (!res.includes('saved')) throw new Error(`Couldn't save ${path} on the robot.`);
+    });
+    // The robot library may have been overwritten: check it again before the next Run.
+    this.syncedHash = null;
+  }
+
+  async removeFile(path: string) {
+    await this.working((repl) => repl.evalOk(removeFileScript(path), 5000));
+    this.syncedHash = null;
+  }
+
+  /** Returns false if a file with the new name already exists. */
+  async renameFile(from: string, to: string): Promise<boolean> {
+    const out = await this.working((repl) => repl.evalOk(renameFileScript(from, to), 5000));
+    this.syncedHash = null;
+    return out.includes('renamed');
+  }
+
+  /**
+   * Run one Shell entry, like typing at MicroPython's >>> prompt. Variables
+   * stay between entries. Unlike Run, there's no soft reset first.
+   */
+  async shell(source: string, config: HardwareConfig, onOutput: (text: string) => void): Promise<ShellResult> {
+    this.requireReady();
+    this.stopRequested = false;
+    await this.syncLibrary(config);
+    const repl = this.requireReady();
+    this.activity = 'shell';
+    this.setState('running');
+    try {
+      const r = await repl.exec(shellScript(source), { timeoutMs: Infinity, onOutput });
+      this.clearStopTimers();
+      this.activity = null;
+      this.setState('ready');
+      const err = r.stderr.trim();
+      if (!err) return { status: 'ok' };
+      if (/KeyboardInterrupt/.test(err) || this.stopRequested) return { status: 'stopped' };
+      return { status: 'error', error: trimShellTraceback(err) };
+    } catch (e) {
+      this.clearStopTimers();
+      this.activity = null;
+      if (e instanceof DisconnectedError || !this.transport) throw new NotConnectedError();
+      if (this.state !== 'disconnected') this.setState('ready');
+      throw e;
+    }
+  }
+
+  /** Switch motors, lights and sound off when nothing is running (after a Shell command, say). */
+  async safeStop() {
+    await this.working((repl) => repl.exec(SAFE_STOP_SCRIPT, { timeoutMs: 5000 }));
+  }
+
+  /**
+   * Restart the Pico into its USB drive mode ("BOOTSEL") so new MicroPython can
+   * be copied on. The serial port goes away as it restarts; that's expected.
+   */
+  async rebootToBootloader() {
+    const repl = this.requireReady();
+    this.leavingForBootloader = true;
+    this.setState('working');
+    try {
+      await repl.exec(BOOTLOADER_SCRIPT, { timeoutMs: 3000 });
+    } catch {
+      /* the board vanishes mid-command; that's the point */
+    }
+    if (this.transport) await this.disconnect();
+    this.leavingForBootloader = false;
   }
 
   /** Copy the robot library to the board if it's missing or out of date. */
@@ -190,12 +316,13 @@ export class RobotConnection {
   }
 
   /** Run a program from RAM, streaming its output. Resolves when it ends. */
-  async run(code: string, config: HardwareConfig): Promise<RunResult> {
+  async run(code: string, config: HardwareConfig, opts: { handWritten?: boolean } = {}): Promise<RunResult> {
     this.requireReady();
     this.stopRequested = false;
     try {
       await this.syncLibrary(config);
       const repl = this.requireReady();
+      this.activity = 'program';
       this.setState('running');
       await repl.softReset();
       await repl.evalOk(WATCHDOG_SCRIPT, 5000);
@@ -206,14 +333,16 @@ export class RobotConnection {
       });
       this.stopHeartbeat();
       this.clearStopTimers();
+      this.activity = null;
       this.setState('ready');
-      const err = translateTraceback(result.stderr);
+      const err = translateTraceback(result.stderr, opts);
       if (!err) return { status: 'finished' };
       if (err.stoppedByUser || this.stopRequested) return { status: 'stopped' };
       return { status: 'error', error: err };
     } catch (e) {
       this.stopHeartbeat();
       this.clearStopTimers();
+      this.activity = null;
       if (e instanceof DisconnectedError || !this.transport) throw new NotConnectedError();
       if (this.state !== 'disconnected') this.setState('ready');
       throw e;
@@ -276,4 +405,19 @@ export class RobotConnection {
     this.stopTimers.forEach(clearTimeout);
     this.stopTimers = [];
   }
+}
+
+/**
+ * Shell tracebacks mention Eaglets Code's own wrapper ("<stdin>"). Keep only
+ * the student's lines, like Thonny does.
+ */
+export function trimShellTraceback(tb: string): string {
+  const lines = tb.split(/\r?\n/);
+  const kept: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (/^\s*File "<stdin>"/.test(lines[i])) continue;
+    kept.push(lines[i]);
+  }
+  const out = kept.join('\n').trim();
+  return out === 'Traceback (most recent call last):' ? tb.trim() : out;
 }

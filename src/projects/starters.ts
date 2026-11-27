@@ -63,7 +63,6 @@ const compare = (op: 'EQ' | 'LT' | 'GT', a: Json, bb: Json) => b('logic_compare'
 export interface StarterProject {
   id: string;
   title: string;
-  emoji: string;
   day: 'Day 2' | 'Day 3' | 'Day 4' | 'Any day';
   concept: string;
   description: string;
@@ -103,7 +102,6 @@ function build(): StarterProject[] {
     {
       id: 'flashing-leds',
       title: 'Flashing LEDs',
-      emoji: '💡',
       day: 'Day 2',
       concept: 'Sequencing: the robot does each block in order',
       description: 'Blinks red and blue, then finishes with a rainbow.',
@@ -116,7 +114,6 @@ function build(): StarterProject[] {
     {
       id: 'traffic-light',
       title: 'Traffic Light',
-      emoji: '🚦',
       day: 'Day 2',
       concept: 'Sequencing and timing with a forever loop',
       description: 'Green, yellow, red, again and again, like a real traffic light.',
@@ -127,7 +124,6 @@ function build(): StarterProject[] {
     {
       id: 'simon-says',
       title: 'Simon Says Robot',
-      emoji: '🗣',
       day: 'Day 2',
       concept: 'Logic: comparing with = and choosing with if / else',
       description: 'The robot picks a random command and shows it with a color and a move.',
@@ -157,7 +153,6 @@ function build(): StarterProject[] {
     {
       id: 'mood-lights',
       title: 'Robot Mood Lights',
-      emoji: '🎨',
       day: 'Day 2',
       concept: 'If / else if / else with a sensor',
       description: 'Turn the dial to change the robot’s mood: calm blue, happy green, excited red.',
@@ -181,7 +176,6 @@ function build(): StarterProject[] {
     {
       id: 'move-and-stop',
       title: 'Move Forward and Stop',
-      emoji: '🏁',
       day: 'Day 3',
       concept: 'Movement blocks with a time limit',
       description: 'Drives forward for 2 seconds, stops, and shows green.',
@@ -194,7 +188,6 @@ function build(): StarterProject[] {
     {
       id: 'robot-dance',
       title: 'Robot Dance',
-      emoji: '🕺',
       day: 'Any day',
       concept: 'Functions: give a group of blocks a name and reuse it',
       description: 'A "dance move" function, repeated three times, then a rainbow finish.',
@@ -205,7 +198,6 @@ function build(): StarterProject[] {
     {
       id: 'gesture-robot',
       title: 'Gesture-Controlled Robot',
-      emoji: '👋',
       day: 'Day 3',
       concept: 'Sensors + if / else if: swipe to steer',
       description: 'Swipe left or right to turn, up to go forward, down to stop.',
@@ -227,7 +219,6 @@ function build(): StarterProject[] {
     {
       id: 'obstacle-detection',
       title: 'Obstacle Detection',
-      emoji: '🧱',
       day: 'Day 3',
       concept: 'Ultrasonic sensor + if / else',
       description: 'Drives forward and stops with red lights when something is closer than 15 cm.',
@@ -247,7 +238,6 @@ function build(): StarterProject[] {
     {
       id: 'tilt-alarm',
       title: 'IMU Tilt Alarm',
-      emoji: '🚨',
       day: 'Day 3',
       concept: 'Motion sensor: is the robot tipped over?',
       description: 'A robot security system: flashes red if anyone tilts it.',
@@ -267,7 +257,6 @@ function build(): StarterProject[] {
     {
       id: 'tilt-colors',
       title: 'Tilt Color Mixer',
-      emoji: '🌈',
       day: 'Day 3',
       concept: 'Pair each tilt direction with a color channel',
       description: 'Tip left/right to add red, forward/back to add blue.',
@@ -291,7 +280,6 @@ function build(): StarterProject[] {
     {
       id: 'shake-color',
       title: 'Shake to Change Color',
-      emoji: '🫨',
       day: 'Any day',
       concept: 'Variables: counting shakes',
       description: 'Every shake picks a new random color and counts how many shakes so far.',
@@ -321,7 +309,6 @@ function build(): StarterProject[] {
     {
       id: 'smart-maze',
       title: 'Smart Maze Starter',
-      emoji: '🧭',
       day: 'Day 4',
       concept: 'Put it together: distance sensor + IMU turns',
       description: 'Drives until a wall, turns right 90°. If that is blocked too, turns around.',

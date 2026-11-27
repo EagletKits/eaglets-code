@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { STARTER_PROJECTS, type StarterProject } from '../projects/starters';
-import { BUZZER_PIN_CHOICES, DEFAULT_CONFIG, V62_PINS, normalizeConfig, type Axis, type HardwareConfig } from '../hardware/config';
+import { Icon } from '../Icon';
+import { STARTER_PROJECTS, type StarterProject } from '../../projects/starters';
+import { BUZZER_PIN_CHOICES, DEFAULT_CONFIG, V62_PINS, normalizeConfig, type Axis, type HardwareConfig } from '../../hardware/config';
 
 export function Modal({ title, onClose, children, wide, footer }: { title: string; onClose: () => void; children: ReactNode; wide?: boolean; footer?: ReactNode }) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -20,7 +21,7 @@ export function Modal({ title, onClose, children, wide, footer }: { title: strin
         <header className="modal-head">
           <h2>{title}</h2>
           <button className="icon-btn" onClick={onClose} aria-label="Close">
-            ✕
+            <Icon name="close" />
           </button>
         </header>
         <div className="modal-body">{children}</div>
@@ -72,13 +73,10 @@ export function StartersDialog({ onPick, onClose }: { onPick: (s: StarterProject
       </div>
       <div className="starter-grid">
         {list.map((s) => (
-          <button key={s.id} className="starter-card" onClick={() => onPick(s)}>
-            <span className="starter-emoji">{s.emoji}</span>
+          <button key={s.id} className="starter-card" data-day={s.day.replace(/\s+/g, '').toLowerCase()} onClick={() => onPick(s)}>
             <span className="starter-day">{s.day}</span>
             <strong>{s.title}</strong>
             <span className="starter-desc">{s.description}</span>
-            <span className="starter-concept">🎯 {s.concept}</span>
-            <span className="starter-needs">{s.needs.join(' · ')}</span>
           </button>
         ))}
       </div>
@@ -123,7 +121,7 @@ export function PythonDialog({ code, onDownload, onClose }: { code: string; onDo
               setTimeout(() => setCopied(false), 1500);
             }}
           >
-            {copied ? 'Copied!' : 'Copy'}
+            {copied ? 'Copied' : 'Copy'}
           </button>
           <button className="btn btn-primary" onClick={onDownload}>
             Download .py
@@ -138,7 +136,21 @@ export function PythonDialog({ code, onDownload, onClose }: { code: string; onDo
   );
 }
 
-export function SettingsDialog({ config, onSave, onDownloadLibrary, onClose }: { config: HardwareConfig; onSave: (c: HardwareConfig) => void; onDownloadLibrary: () => void; onClose: () => void }) {
+export function SettingsDialog({
+  config,
+  debug,
+  onDebugChange,
+  onSave,
+  onDownloadLibrary,
+  onClose,
+}: {
+  config: HardwareConfig;
+  debug: boolean;
+  onDebugChange: (on: boolean) => void;
+  onSave: (c: HardwareConfig) => void;
+  onDownloadLibrary: () => void;
+  onClose: () => void;
+}) {
   const [c, setC] = useState<HardwareConfig>(config);
   const set = <K extends keyof HardwareConfig>(k: K, v: HardwareConfig[K]) => setC((old) => ({ ...old, [k]: v }));
   const num = (k: keyof HardwareConfig, label: string, min: number, max: number, step = 1, help?: string) => (
@@ -170,7 +182,7 @@ export function SettingsDialog({ config, onSave, onDownloadLibrary, onClose }: {
             Reset to defaults
           </button>
           <button className="btn" onClick={onDownloadLibrary}>
-            Download robot library (for Thonny)
+            Download robot library files
           </button>
           <button
             className="btn btn-primary"
@@ -187,6 +199,13 @@ export function SettingsDialog({ config, onSave, onDownloadLibrary, onClose }: {
       <p className="callout">
         These settings are saved in this browser and copied to the robot the next time you press Run. Pins are fixed by the Eaglets PCB V6.2 design and can't be changed here.
       </p>
+      <label className="check debug-toggle">
+        <input type="checkbox" checked={debug} onChange={(e) => onDebugChange(e.target.checked)} />
+        <span>
+          <b>Teacher debug mode</b> (turns on right away). Shows the robot's technical details, full error messages, the console after every run and a log of everything the app did,
+          with a report you can copy and send. Switch it off before handing the laptop back to a student.
+        </span>
+      </label>
       <div className="settings-grid">
         <section>
           <h3>Motors</h3>
@@ -265,6 +284,61 @@ export function SettingsDialog({ config, onSave, onDownloadLibrary, onClose }: {
   );
 }
 
+export function AboutDialog({ onClose }: { onClose: () => void }) {
+  const [notices, setNotices] = useState<string | null>(null);
+  const [noticesFailed, setNoticesFailed] = useState(false);
+  const loadNotices = () => {
+    if (notices !== null) return;
+    fetch(`${import.meta.env.BASE_URL}THIRD_PARTY_NOTICES.txt`)
+      .then((r) => (r.ok ? r.text() : Promise.reject(new Error(String(r.status)))))
+      .then(setNotices)
+      .catch(() => setNoticesFailed(true));
+  };
+  return (
+    <Modal title="About Eaglets Code" onClose={onClose} wide>
+      <p>
+        <b>Eaglets Code {__APP_VERSION__}</b>. Block and Python programming for the Eaglets robot kit.
+        <br />
+        Copyright © 2026 Eaglets. Free and open-source under the MIT License.
+      </p>
+
+      <h3>Your privacy</h3>
+      <p>
+        Eaglets Code has no accounts, ads, analytics or tracking, and doesn't send anything to Eaglets or anyone else. Your programs and settings are saved only on this computer, and copied onto
+        the robot when you press Run. To remove them, clear this app's site data or uninstall it. Please don't put full names, addresses or other personal details into project names. Questions: <a href="mailto:eaglets.kits@gmail.com">eaglets.kits@gmail.com</a>
+      </p>
+
+      <h3>Safety</h3>
+      <div className="callout callout-warn">
+        Robots have moving parts and batteries. Children should use them with an adult nearby. <b>The robot's power switch is the real emergency stop</b>, because software can't stop a robot
+        whose controller has frozen. Keep fingers, hair and loose clothing away from the wheels.
+      </div>
+
+      <h3>No warranty</h3>
+      <p className="legal-small">
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+        NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+      </p>
+
+      <details className="notices" onToggle={(e) => (e.currentTarget as HTMLDetailsElement).open && loadNotices()}>
+        <summary>Open-source software used in Eaglets Code</summary>
+        <p className="legal-small">
+          Built with Blockly (Raspberry Pi Foundation, Apache-2.0), React (MIT), CodeMirror (MIT) and the Fredoka font (SIL Open Font License 1.1). The desktop app also uses Electron and Chromium.
+          Full licence texts:
+        </p>
+        {noticesFailed ? (
+          <p className="muted">Couldn't load the notices file. It's also included as THIRD_PARTY_NOTICES.txt with the app.</p>
+        ) : (
+          <pre className="notices-text" aria-label="Third-party licences">
+            {notices ?? 'Loading…'}
+          </pre>
+        )}
+      </details>
+    </Modal>
+  );
+}
+
 export function HelpDialog({ onClose }: { onClose: () => void }) {
   return (
     <Modal title="Connecting your robot" onClose={onClose} wide>
@@ -282,10 +356,10 @@ export function HelpDialog({ onClose }: { onClose: () => void }) {
           Click <b>Connect Robot</b>, choose the port that says <i>Board in FS mode</i>, <i>Pico</i> or <i>USB Serial</i>, then click <b>Connect</b>.
         </li>
         <li>
-          Press <b>▶ Run</b>. The first time, Eaglets Code copies its robot library onto the Pico. That takes a few seconds.
+          Press <b>Run</b>. The first time, Eaglets Code copies its robot library onto the Pico. That takes a few seconds.
         </li>
         <li>
-          Press <b>■ Stop</b> to stop the program. The motors and lights switch off.
+          Press <b>Stop</b> to stop the program. The motors and lights switch off.
         </li>
       </ol>
       <div className="callout callout-warn">
@@ -294,16 +368,16 @@ export function HelpDialog({ onClose }: { onClose: () => void }) {
       <h3>Trouble?</h3>
       <ul>
         <li>
-          <b>"Being used by another program":</b> close Thonny (or another Eaglets Code tab), then connect again.
+          <b>"Being used by another program":</b> close any other program using the robot (another Eaglets Code window, or an old copy of Thonny), then connect again.
         </li>
         <li>
           <b>No robot in the list:</b> try another cable. Some USB cables only charge and can't carry data.
         </li>
         <li>
-          <b>Connect doesn't appear to work:</b> use Chrome or Edge on a computer or Chromebook. Safari, Firefox, iPads and phones can't use USB.
+          <b>Connect doesn't appear to work:</b> use the Eaglets Code desktop app, or Chrome or Edge on a computer or Chromebook. Safari, Firefox, iPads and phones can't use USB. The Simulator tab works anywhere.
         </li>
         <li>
-          <b>No USB at all?</b> Use the Simulator tab, or download the Python and run it in Thonny.
+          <b>"MicroPython isn't responding" or a brand-new Pico?</b> Use <b>More → Install MicroPython</b>.
         </li>
       </ul>
     </Modal>

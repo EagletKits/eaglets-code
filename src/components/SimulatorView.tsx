@@ -134,7 +134,7 @@ export function SimulatorView({ robot, running, advanced }: Props) {
           aria-label="Simulated robot arena. Click to add or remove boxes."
         />
         <div className="sim-arena-bar">
-          <span className="sim-readout">📏 {Math.round(robot.distance())} cm</span>
+          <span className="sim-readout">Distance {Math.round(robot.distance())} cm</span>
           <span className="sim-hint">{running ? 'Running…' : 'Click the floor to add a box'}</span>
           <div className="seg">
             <button className={layout === 'open' ? 'on' : ''} onClick={() => setArena('open')} disabled={running}>
@@ -144,7 +144,7 @@ export function SimulatorView({ robot, running, advanced }: Props) {
               Maze
             </button>
             <button onClick={() => robot.reset()} disabled={running} title="Put the robot back at the start">
-              ↺
+              Reset
             </button>
           </div>
         </div>
@@ -156,51 +156,53 @@ export function SimulatorView({ robot, running, advanced }: Props) {
         ))}
       </div>
 
+      <details className="sim-more" open={advanced}>
+        <summary>Practice sensors</summary>
       <div className="sim-controls">
         <label className="sim-row">
-          <span>🎛 Dial</span>
+          <span>Dial</span>
           <input type="range" min={0} max={100} value={inp.dial} onChange={(e) => update({ dial: +e.target.value })} />
           <b>{inp.dial}</b>
         </label>
         <label className="sim-row">
-          <span>↔ Tilt L/R</span>
+          <span>Tilt L/R</span>
           <input type="range" min={-90} max={90} value={inp.tiltLR} onChange={(e) => update({ tiltLR: +e.target.value })} />
           <b>{inp.tiltLR}°</b>
         </label>
         <label className="sim-row">
-          <span>↕ Tilt F/B</span>
+          <span>Tilt F/B</span>
           <input type="range" min={-90} max={90} value={inp.tiltFB} onChange={(e) => update({ tiltFB: +e.target.value })} />
           <b>{inp.tiltFB}°</b>
         </label>
         <div className="sim-row">
-          <span>👋 Swipe</span>
+          <span>Swipe</span>
           <div className="sim-buttons">
-            <button onClick={() => swipe('left')} aria-label="Swipe left">⬅</button>
-            <button onClick={() => swipe('up')} aria-label="Swipe up">⬆</button>
-            <button onClick={() => swipe('down')} aria-label="Swipe down">⬇</button>
-            <button onClick={() => swipe('right')} aria-label="Swipe right">➡</button>
+            <button onClick={() => swipe('left')} aria-label="Swipe left">Left</button>
+            <button onClick={() => swipe('up')} aria-label="Swipe up">Up</button>
+            <button onClick={() => swipe('down')} aria-label="Swipe down">Down</button>
+            <button onClick={() => swipe('right')} aria-label="Swipe right">Right</button>
           </div>
         </div>
         <div className="sim-row">
-          <span>🫨 Motion</span>
+          <span>Motion</span>
           <div className="sim-buttons">
-            <button onClick={() => robot.shake()}>Shake!</button>
+            <button onClick={() => robot.shake()}>Shake</button>
             <button onClick={() => update({ tiltLR: 0, tiltFB: 0 })}>Level</button>
           </div>
         </div>
         <label className="sim-row">
-          <span>🎨 Color</span>
+          <span>Color</span>
           <select value={inp.color} onChange={(e) => update({ color: e.target.value })}>
             {['red', 'yellow', 'green', 'blue', 'purple', 'white', 'black'].map((c) => (
               <option key={c}>{c}</option>
             ))}
           </select>
           <label className="check">
-            <input type="checkbox" checked={inp.objectNear} onChange={(e) => update({ objectNear: e.target.checked })} /> ✋ near
+            <input type="checkbox" checked={inp.objectNear} onChange={(e) => update({ objectNear: e.target.checked })} /> object near
           </label>
         </label>
         <label className="sim-row">
-          <span>☀ Light</span>
+          <span>Light</span>
           <input type="range" min={0} max={100} value={inp.light} onChange={(e) => update({ light: +e.target.value })} />
           <b>{inp.light}</b>
         </label>
@@ -214,12 +216,12 @@ export function SimulatorView({ robot, running, advanced }: Props) {
               <label className="check">
                 <input type="checkbox" checked={inp.lineRight} onChange={(e) => update({ lineRight: e.target.checked })} /> line R
               </label>
-              <button onClick={() => robot.clap()}>👏</button>
+              <button onClick={() => robot.clap()}>Clap</button>
             </div>
           </div>
         )}
       </div>
-      <p className="sim-note">Practice robot. Real motors and sensors behave a little differently, so always test on the real robot too.</p>
+      </details>
     </div>
   );
 }

@@ -35,6 +35,8 @@ export const BlocklyWorkspace = forwardRef<WorkspaceHandle, Props>(function Bloc
       toolbox: buildToolbox({ beginner, buzzerEnabled }),
       theme: eagletsTheme(),
       renderer: 'zelos',
+      // Local copy (see vite.config.ts); the default is Blockly's CDN.
+      media: `${import.meta.env.BASE_URL}blockly-media/`,
       trashcan: true,
       sounds: false,
       move: { scrollbars: true, drag: true, wheel: false },

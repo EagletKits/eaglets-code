@@ -9,17 +9,20 @@ export interface ProjectFile {
   name: string;
   savedAt: string;
   workspace: Record<string, unknown>;
+  /** MicroPython the student wrote or edited by hand. Absent for block-only projects. */
+  code?: string;
 }
 
 export class ProjectError extends Error {}
 
-export function serializeProject(workspace: Blockly.Workspace, name: string): ProjectFile {
+export function serializeProject(workspace: Blockly.Workspace, name: string, code?: string): ProjectFile {
   return {
     format: PROJECT_FORMAT,
     version: PROJECT_VERSION,
     name: name.trim() || 'My robot program',
     savedAt: new Date().toISOString(),
     workspace: Blockly.serialization.workspaces.save(workspace) as Record<string, unknown>,
+    ...(code === undefined ? {} : { code }),
   };
 }
 
@@ -58,7 +61,7 @@ export function parseProject(text: string): ProjectFile {
   if (unknown.length) {
     throw new ProjectError(`This project uses blocks this version doesn't have (${unknown.slice(0, 3).join(', ')}).`);
   }
-  return { format: PROJECT_FORMAT, version: p.version, name: String(p.name ?? 'My robot program'), savedAt: String(p.savedAt ?? ''), workspace: p.workspace as Record<string, unknown> };
+  return { format: PROJECT_FORMAT, version: p.version, name: String(p.name ?? 'My robot program'), savedAt: String(p.savedAt ?? ''), workspace: p.workspace as Record<string, unknown>, ...(typeof p.code === 'string' ? { code: p.code } : {}) };
 }
 
 /** Replace the workspace contents with a project. Leaves the old contents if loading fails. */

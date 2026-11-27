@@ -81,6 +81,22 @@ class Movement(unittest.TestCase):
         self.assertLess(stops[0][0], 21000 + 100)
         assert_safe(self, r)
 
+    def test_shell_move_without_start_still_auto_stops(self):
+        # The Shell never calls start(); arm_safety() must still enforce the auto-stop.
+        r = run("import eaglets as robot\nrobot.arm_safety()\nrobot.forward(60)\nrobot.wait(30)\nrobot.shutdown()\n", raw=True)
+        self.assertTrue(r["ok"], r)
+        self.assertIn("stopped by themselves", r["stdout"])
+        stops = [e for e in r["events"] if e[1] == "duty" and e[3] == 65535]
+        self.assertTrue(stops)
+        self.assertLess(stops[0][0], 21000 + 100)
+
+    def test_arm_safety_leaves_running_motors_alone(self):
+        # Called before each Shell command: must not stop a move the previous command started.
+        r = run("import eaglets as robot\nrobot.arm_safety()\nrobot.forward(60)\nrobot.wait(1)\nrobot.arm_safety()\nrobot.wait(1)\nrobot.shutdown()\n", raw=True)
+        self.assertTrue(r["ok"], r)
+        stops = [e for e in r["events"] if e[1] == "duty" and e[3] == 65535 and e[0] < 1900]
+        self.assertEqual(stops, [], "arm_safety() stopped the motors")
+
     def test_turns_drive_wheels_opposite(self):
         r = run("robot.turn_right(50)\nrobot.wait(0.2)\nrobot.stop()")
         duties = {}

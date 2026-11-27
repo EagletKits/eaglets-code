@@ -30,6 +30,8 @@ Do these with one robot, wheels off the table, after the board passes `TESTING-G
 | 12 | **Shake** triggers once per shake, not when driving | `SHAKE_G = 0.8` is a guess | Raise or lower *Shake strength*. |
 | 13 | **Dial** goes 0 → 100 clockwise | Pot wiring direction | Tick *Dial reads backwards*. |
 | 14 | **Line sensors** and **sound sensor** (Advanced mode) | Module output polarity | Line: flip `LINE_DARK_VALUE` (0/1). |
+| 15 | **Desktop app** connects to the Pico with no picker (one robot) and shows a chooser (two robots) | Electron's serial handling was only run against the mock board and unit-tested port logic | Use Chrome or Edge with `npm run dev` instead, and report it. |
+| 16 | **Code mode**: run hand-written code, press **Stop** mid-loop | Same raw REPL path as blocks, but never run on a real board | Same as row 2. |
 
 ### Setting the IMU axes (row 10)
 

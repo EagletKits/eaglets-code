@@ -28,6 +28,15 @@ describe('save and load', () => {
     });
   }
 
+  it('keeps hand-written code with the project, and omits it for block-only projects', () => {
+    const s = STARTER_PROJECTS[0];
+    const ws = workspaceFrom(s.workspace);
+    const withCode = parseProject(JSON.stringify(serializeProject(ws, s.title, 'import eaglets\nprint(1)\n')));
+    expect(withCode.code).toBe('import eaglets\nprint(1)\n');
+    const blocksOnly = parseProject(JSON.stringify(serializeProject(ws, s.title)));
+    expect('code' in blocksOnly).toBe(false);
+  });
+
   it('rejects files that are not projects', () => {
     expect(() => parseProject('not json')).toThrow(ProjectError);
     expect(() => parseProject('{"hello":1}')).toThrow(/isn't an Eaglets Code project/);

@@ -1,6 +1,5 @@
 import { createRoot } from 'react-dom/client';
-import '@fontsource-variable/inter';
-import '@fontsource/space-grotesk/700.css';
+import '@fontsource-variable/fredoka';
 import './index.css';
 import App from './App';
 
