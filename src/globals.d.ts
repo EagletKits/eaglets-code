@@ -19,7 +19,7 @@ interface Window {
   showDirectoryPicker?: (opts?: { mode?: 'read' | 'readwrite'; id?: string }) => Promise<FileSystemDirectoryHandle>;
   /** Present only in the desktop app (desktop/preload.cjs). */
   eagletsDesktop?: {
-    findBootDrive(): Promise<string | null>;
+    findBootDrive(): Promise<{ drive: string; chip: 'rp2040' | 'rp2350' } | null>;
     writeFirmware(drive: string, data: Uint8Array): Promise<void>;
   };
 }

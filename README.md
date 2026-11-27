@@ -6,7 +6,7 @@ Students snap blocks together, press **Run on Robot**, and the robot does it. Be
 
 There's also a **Simulator** tab: a practice robot on screen with an ultrasonic beam, LEDs, a dial, tilt sliders, swipe buttons and a maze. It's for when there aren't enough robots to go round, or when a program needs testing before it touches a real motor.
 
-> **Hardware status:** none of this has run on a real Eaglets robot yet. No V6.2 board has been built. Everything that talks to hardware has been tested against mock hardware only. Read [docs/HARDWARE-STATUS.md](docs/HARDWARE-STATUS.md) before camp.
+> **Hardware status:** none of this has run on a real Eaglets robot yet. No V6.2 board has been built. The USB side (installing MicroPython, connecting, Shell, Run/Stop, files, reconnecting) has been tested on a real Raspberry Pi Pico; motors, LEDs and sensors only on fake hardware. Read [docs/HARDWARE-STATUS.md](docs/HARDWARE-STATUS.md) before camp.
 
 ## Run it
 
@@ -79,13 +79,13 @@ Eaglets Code replaces Thonny for Eaglets robots:
 
 | Thonny | Eaglets Code |
 |---|---|
-| Install or update MicroPython | **More → Install MicroPython.** MicroPython 1.29.0 for the Pico 2 ships inside the app, so no internet is needed. A robot that already runs MicroPython restarts into install mode by itself. A brand-new Pico needs BOOTSEL held while plugging it in. The desktop app finds the Pico's drive by itself; in Chrome you pick the `RP2350` drive once. |
+| Install or update MicroPython | **More → Install MicroPython.** MicroPython 1.29.0 for the Pico 2 (the Eaglets board) and the original Pico ships inside the app, so no internet is needed, and the right build is picked for the chip. A robot that already runs MicroPython restarts into install mode by itself. A brand-new Pico needs BOOTSEL held while plugging it in. The desktop app finds the Pico's drive by itself; in Chrome you pick the `RP2350` (Pico 2) or `RPI-RP2` (Pico) drive once. |
 | Shell (`>>>`) | The **Shell** under the Code editor. Enter runs a line (a line ending in `:` continues on the next line, an empty line runs the block), ↑/↓ recall history, Ctrl+C or **Stop** interrupts. `robot` is ready to use, and variables stay until the next Run. Each entry arms the motor auto-stop, and **Stop** switches motors and lights off even after a Shell command has finished. |
 | Files on the Pico | **Files** (robot card, or More → Files on robot): see what's stored and how much space is left; upload, download, rename, delete; open a file into the editor. The four robot library files are labelled and reinstalled on the next Run if deleted. |
 | Open/Save `.py` | **Open** takes `.eaglets` projects and `.py` files. In Code mode: **Save** (Ctrl/Cmd+S) writes back to where the code came from, **Save to computer…** and **Save to robot…** pick a new place. Saving as `main.py` on the robot warns that it runs at power-on. In Chrome, Edge and the desktop app Save overwrites the same file; elsewhere it downloads a copy. |
 | Plotter | **plot** on the console header graphs the numbers a program prints (`print(robot.distance())`, or `distance: 23 light: 40` for named lines), up to four lines at once. |
 
-The firmware file isn't in the repository until you fetch it once: `npm run fetch-firmware` downloads the pinned official build from micropython.org, checks it's a Pico 2 Arm image, records its SHA-256 (later downloads must match) and saves MicroPython's licence for the third-party notices. Commit `public/firmware/` and `firmware/micropython/LICENSE` so every build has it.
+The firmware files are committed in `public/firmware/`. To change version, edit `scripts/fetch-micropython.mjs` and run `npm run fetch-firmware`: it downloads the pinned official builds from micropython.org, checks each one is a UF2 image for its chip, records their SHA-256 (later downloads must match) and saves MicroPython's licence for the third-party notices.
 
 ## Connecting a robot
 

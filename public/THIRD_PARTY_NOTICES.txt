@@ -1341,7 +1341,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 ==============================================================================
-MicroPython 1.29.0 firmware for the Raspberry Pi Pico 2 (RPI_PICO2-20260824-v1.29.0.uf2)
+MicroPython 1.29.0 firmware (RPI_PICO2-20260824-v1.29.0.uf2, RPI_PICO-20260824-v1.29.0.uf2)
 License: MIT, with the bundled components listed below
 Source: https://github.com/micropython/micropython/tree/v1.29.0
 ==============================================================================

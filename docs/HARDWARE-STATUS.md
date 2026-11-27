@@ -10,6 +10,21 @@ Written 23 November 2026. **Eaglets Code has not been run on a real robot.** No 
 - The USB protocol code works against a **mock board** that imitates MicroPython's raw REPL and raw-paste mode, byte by byte.
 - The app runs in Chrome. The simulator and the mock connect/run/stop flow have been clicked through.
 
+## Tested on a real Pico (27 November 2026)
+
+A bare **Raspberry Pi Pico (RP2040)**, not a Pico 2 and not on an Eaglets board, in the desktop app on macOS:
+
+- Flash fully erased first, so it started like a new Pico (only the `RPI-RP2` drive, no MicroPython).
+- **More → Install MicroPython** found the drive by itself, copied MicroPython 1.29.0 and the app connected on its own: about 9 seconds from blank to connected. The robot's storage was empty afterwards, confirming the erase.
+- Connected by itself when the app opened. Raw REPL and raw-paste work on real MicroPython 1.29.0.
+- Shell: expressions echo (`2 + 2` → `4`), variables persist, multi-line blocks, clean tracebacks.
+- Run streams output live; **Stop ended a looping program in 60 ms** and its `finally:` ran.
+- A crash in Code mode named and highlighted the right line.
+- Save to robot, Files (list, open, delete) and the robot library install all worked.
+- After the board reset and re-appeared on USB, the app **reconnected by itself in 2.3 seconds**.
+
+Still not tested on hardware: a **Pico 2** (RP2350) and its installer path, anything on the V6.2 board (motors, LEDs, sensors, power), Windows, and Chrome's drive picker.
+
 ## Must be tested on a real robot before camp
 
 Do these with one robot, wheels off the table, after the board passes `TESTING-GUIDE.md`.

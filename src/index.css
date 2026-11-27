@@ -481,7 +481,8 @@ button {
   min-height: 110px;
   display: flex;
   flex-direction: column;
-  flex: 1;
+  /* Grow to fill the panel, but never shrink below its contents (the plot would spill out). */
+  flex: 1 0 auto;
 }
 .console-head {
   display: flex;

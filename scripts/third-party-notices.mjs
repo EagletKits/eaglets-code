@@ -91,9 +91,10 @@ export function buildNotices() {
   // The MicroPython firmware the app can install onto the robot (scripts/fetch-micropython.mjs).
   if (fs.existsSync(FIRMWARE_INFO) && fs.existsSync(FIRMWARE_LICENSE)) {
     const fw = JSON.parse(fs.readFileSync(FIRMWARE_INFO, 'utf8'));
+    const builds = fw.builds ?? [fw];
     parts.push(
       rule,
-      `MicroPython ${fw.version} firmware for the Raspberry Pi Pico 2 (${fw.file})`,
+      `MicroPython ${fw.version} firmware (${builds.map((b) => b.file).join(', ')})`,
       'License: MIT, with the bundled components listed below',
       `Source: https://github.com/micropython/micropython/tree/v${fw.version}`,
       rule,

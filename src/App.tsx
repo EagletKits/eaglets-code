@@ -997,6 +997,7 @@ export default function App() {
         <FirmwareDialog
           connected={connected}
           busy={busy}
+          boardMachine={robot.board?.machine ?? null}
           boardRelease={robot.board?.release ?? null}
           onRestartRobot={() => robot.rebootToBootloader()}
           isConnected={() => robot.connected}

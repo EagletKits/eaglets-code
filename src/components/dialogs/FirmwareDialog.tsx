@@ -1,13 +1,23 @@
 import { useEffect, useRef, useState } from 'react';
 import { Modal } from './Dialogs';
-import { compareVersions, desktopFlashing, flashWithFolderPicker, loadBundledFirmware, type BundledFirmware } from '../../robot/firmware';
+import {
+  BOARD_NAME,
+  chipFromMachine,
+  compareVersions,
+  desktopFlashing,
+  flashWithFolderPicker,
+  loadFirmwareData,
+  loadFirmwareManifest,
+  type Chip,
+  type FirmwareManifest,
+} from '../../robot/firmware';
 
 type Step =
   | { kind: 'intro' }
   | { kind: 'restarting' }
   | { kind: 'waiting-drive' }
   | { kind: 'choose-drive' }
-  | { kind: 'writing' }
+  | { kind: 'writing'; chip: Chip }
   | { kind: 'rebooting' }
   | { kind: 'done'; version: string | null }
   | { kind: 'error'; message: string };
@@ -18,6 +28,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 export function FirmwareDialog({
   connected,
   busy,
+  boardMachine,
   boardRelease,
   onRestartRobot,
   isConnected,
@@ -27,6 +38,8 @@ export function FirmwareDialog({
 }: {
   connected: boolean;
   busy: boolean;
+  /** os.uname().machine of the connected robot, if any. */
+  boardMachine: string | null;
   /** MicroPython version on the connected robot, if any. */
   boardRelease: string | null;
   /** Put the connected robot into BOOTSEL mode. */
@@ -37,21 +50,33 @@ export function FirmwareDialog({
   log: (text: string) => void;
   onClose: () => void;
 }) {
-  const [firmware, setFirmware] = useState<{ info: BundledFirmware; data: Uint8Array } | null | undefined>(undefined);
-  const [loadError, setLoadError] = useState('');
+  const [manifest, setManifest] = useState<FirmwareManifest | null | undefined>(undefined);
   const [step, setStep] = useState<Step>({ kind: 'intro' });
   const alive = useRef(true);
   useEffect(() => {
     alive.current = true;
-    loadBundledFirmware()
-      .then(setFirmware)
-      .catch((e: Error) => setLoadError(e.message));
+    void loadFirmwareManifest().then(setManifest);
     return () => {
       alive.current = false;
     };
   }, []);
 
   const desktop = desktopFlashing();
+  const connectedChip = connected ? chipFromMachine(boardMachine) : null;
+
+  const buildFor = (chip: Chip) => {
+    const b = manifest?.builds.find((x) => x.chip === chip);
+    if (!b) throw new Error(`This copy of Eaglets Code has no MicroPython for the ${BOARD_NAME[chip]}.`);
+    return b;
+  };
+  /** Load and check the firmware for a chip, and say so in the debug log. */
+  const dataFor = async (chip: Chip) => {
+    const b = buildFor(chip);
+    const data = await loadFirmwareData(b);
+    log(`Firmware ${b.file} checked (${data.length} bytes)`);
+    return data;
+  };
+
   const fail = (e: unknown) => {
     const message = e instanceof Error ? e.message : String(e);
     log(`Firmware install failed: ${message}`);
@@ -71,18 +96,14 @@ export function FirmwareDialog({
     setStep({ kind: 'done', version });
   };
 
-  const writeDesktop = async (drive: string) => {
-    setStep({ kind: 'writing' });
-    log(`Copying ${firmware!.info.file} to ${drive}`);
-    await window.eagletsDesktop!.writeFirmware(drive, firmware!.data);
-    await waitForRobot();
-  };
-
   const start = async () => {
-    if (!firmware) return;
+    if (!manifest) return;
     try {
-      log(`Firmware install started (MicroPython ${firmware.info.version})`);
+      log(`Firmware install started (MicroPython ${manifest.version})`);
       if (connected) {
+        if (!connectedChip) throw new Error(`This board (${boardMachine ?? 'unknown'}) isn't a Raspberry Pi Pico, so Eaglets Code can't install MicroPython on it.`);
+        // Check the file before restarting the robot, so a bad file never leaves it stuck in install mode.
+        await dataFor(connectedChip);
         setStep({ kind: 'restarting' });
         await onRestartRobot();
       }
@@ -93,8 +114,14 @@ export function FirmwareDialog({
       setStep(connected ? { kind: 'restarting' } : { kind: 'waiting-drive' });
       // The drive appears a second or two after the Pico restarts, or whenever someone plugs one in holding BOOTSEL.
       for (let i = 0; i < 240 && alive.current; i++) {
-        const drive = await window.eagletsDesktop!.findBootDrive();
-        if (drive) return await writeDesktop(drive);
+        const found = await window.eagletsDesktop!.findBootDrive();
+        if (found) {
+          const data = await dataFor(found.chip);
+          setStep({ kind: 'writing', chip: found.chip });
+          log(`Copying MicroPython to the ${BOARD_NAME[found.chip]} drive at ${found.drive}`);
+          await window.eagletsDesktop!.writeFirmware(found.drive, data);
+          return await waitForRobot();
+        }
         if (i === 10) setStep({ kind: 'waiting-drive' });
         await sleep(500);
       }
@@ -106,38 +133,41 @@ export function FirmwareDialog({
 
   const chooseDrive = async () => {
     try {
-      if (!(await flashWithFolderPicker(firmware!.data))) return;
-      log(`Copied ${firmware!.info.file} with the folder picker`);
+      const chip = await flashWithFolderPicker(dataFor);
+      if (!chip) return;
+      log(`Copied MicroPython for the ${BOARD_NAME[chip]} with the folder picker`);
       await waitForRobot();
     } catch (e) {
       fail(e);
     }
   };
 
-  const bundled = firmware?.info.version;
+  const version = manifest?.version;
   const status = (() => {
-    if (!connected || !boardRelease || !bundled) return null;
-    const c = compareVersions(boardRelease, bundled);
-    if (c < 0) return { kind: 'warn', text: `This robot has MicroPython ${boardRelease}. Updating to ${bundled} is recommended.` };
-    if (c === 0) return { kind: 'ok', text: `This robot already has MicroPython ${boardRelease}, the version Eaglets Code is tested with.` };
-    return { kind: 'ok', text: `This robot has MicroPython ${boardRelease}, newer than the bundled ${bundled}. You don't need to install anything.` };
+    if (!connected || !version) return null;
+    if (!connectedChip) return { kind: 'warn', text: `This board (${boardMachine ?? 'unknown'}) isn't a Raspberry Pi Pico. Eaglets Code can only install MicroPython on a Pico or Pico 2.` };
+    if (!boardRelease) return null;
+    const name = BOARD_NAME[connectedChip];
+    const c = compareVersions(boardRelease, version);
+    if (c < 0) return { kind: 'warn', text: `This ${name} has MicroPython ${boardRelease}. Updating to ${version} is recommended.` };
+    if (c === 0) return { kind: 'ok', text: `This ${name} already has MicroPython ${boardRelease}, the version Eaglets Code is tested with.` };
+    return { kind: 'ok', text: `This ${name} has MicroPython ${boardRelease}, newer than the bundled ${version}. You don't need to install anything.` };
   })();
 
   const working = step.kind === 'restarting' || step.kind === 'writing' || step.kind === 'rebooting';
   return (
     <Modal title="Install MicroPython" onClose={onClose} wide>
-      {firmware === undefined && !loadError && <p className="muted">Loading…</p>}
-      {loadError && <p className="notice notice-error">{loadError}</p>}
-      {firmware === null && (
+      {manifest === undefined && <p className="muted">Loading…</p>}
+      {manifest === null && (
         <p className="callout callout-warn">
           This copy of Eaglets Code was built without the MicroPython firmware. Run <code>npm run fetch-firmware</code>, then build again.
         </p>
       )}
-      {firmware && (
+      {manifest && (
         <>
           <p>
-            Puts <b>MicroPython {firmware.info.version}</b> for the Raspberry Pi Pico 2 onto the robot. It's included with Eaglets Code, so no internet is needed. Files already on the
-            robot are normally kept.
+            Puts <b>MicroPython {manifest.version}</b> onto the robot's Raspberry Pi Pico 2 (or original Pico). It's included with Eaglets Code, so no internet is needed. Files
+            already on the robot are normally kept.
           </p>
 
           {step.kind === 'intro' && (
@@ -152,12 +182,12 @@ export function FirmwareDialog({
                     Hold down the white <b>BOOTSEL</b> button on the Pico.
                   </li>
                   <li>Plug the USB cable back in, then let go of the button.</li>
-                  <li>{desktop ? 'Press Install below. Eaglets Code finds the Pico by itself.' : 'Press Install below, then choose the drive called RP2350.'}</li>
+                  <li>{desktop ? 'Press Install below. Eaglets Code finds the Pico by itself.' : 'Press Install below, then choose the drive called RP2350 (Pico 2) or RPI-RP2 (Pico).'}</li>
                 </ol>
               )}
               <div className="row">
-                <button className="btn btn-primary" onClick={() => void start()} disabled={busy}>
-                  Install MicroPython {firmware.info.version}
+                <button className="btn btn-primary" onClick={() => void start()} disabled={busy || (connected && !connectedChip)}>
+                  Install MicroPython {manifest.version}
                 </button>
                 {busy && <span className="muted">Press Stop first: the robot is busy.</span>}
               </div>
@@ -176,15 +206,15 @@ export function FirmwareDialog({
           {step.kind === 'choose-drive' && (
             <div className="fw-progress">
               <p>
-                A drive called <b>RP2350</b> has appeared (it can take a few seconds). Press the button and choose it. Chrome will ask to let Eaglets Code change files on it: say
-                yes.
+                A drive called <b>RP2350</b> (Pico 2) or <b>RPI-RP2</b> (Pico) has appeared (it can take a few seconds). Press the button and choose it. Chrome will ask to let Eaglets
+                Code change files on it: say yes.
               </p>
               <button className="btn btn-primary" onClick={() => void chooseDrive()}>
-                Choose the RP2350 drive
+                Choose the Pico's drive
               </button>
             </div>
           )}
-          {step.kind === 'writing' && <p className="fw-progress">Copying MicroPython onto the Pico… don't unplug it.</p>}
+          {step.kind === 'writing' && <p className="fw-progress">Copying MicroPython onto the {BOARD_NAME[step.chip]}… don't unplug it.</p>}
           {step.kind === 'rebooting' && <p className="fw-progress">MicroPython is installed. The robot is restarting…</p>}
           {step.kind === 'done' && (
             <p className="notice notice-success">
@@ -205,7 +235,8 @@ export function FirmwareDialog({
             </button>
           )}
           <p className="muted fw-small">
-            Official build {firmware.info.file} from micropython.org (MIT licence). Your Eaglets robot library is put back automatically the next time you press Run.
+            Official builds from micropython.org (MIT licence): {manifest.builds.map((b) => b.file).join(', ')}. Your Eaglets robot library is put back automatically the next time
+            you press Run.
           </p>
         </>
       )}
